@@ -1,0 +1,46 @@
+name: 'agentcheck-action'
+description: 'Scan AI coding-agent config files for hidden prompt-injection attacks.'
+author: 'Dhanush Nehru'
+
+branding:
+  icon: 'search'
+  color: 'red'
+
+inputs:
+  directory:
+    description: 'Directory to scan'
+    required: false
+    default: '.'
+  fail-on:
+    description: 'Minimum severity that fails the action (low | medium | high | critical)'
+    required: false
+    default: 'high'
+
+outputs:
+  exit-code:
+    description: 'Exit code from agentcheck (0 = no findings at or above fail-on, 1 = findings)'
+  sarif-file:
+    description: 'Path to the generated SARIF report'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run agentcheck
+      shell: bash
+      env:
+        INPUT_DIRECTORY: ${{ inputs.directory }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        set +e
+        node "${{ github.action_path }}/bin/agentcheck.js" "$INPUT_DIRECTORY" \
+          --format sarif --output agentcheck.sarif --fail-on "$INPUT_FAIL_ON"
+        SARIF_EXIT=$?
+        node "${{ github.action_path }}/bin/agentcheck.js" "$INPUT_DIRECTORY" --fail-on "$INPUT_FAIL_ON"
+        TEXT_EXIT=$?
+        echo "exit-code=$TEXT_EXIT" >> "$GITHUB_OUTPUT"
+        echo "sarif-file=agentcheck.sarif" >> "$GITHUB_OUTPUT"
+        if [ "$TEXT_EXIT" -ne 0 ]; then
+          echo "::error::agentcheck found suspicious content in AI agent config files (see log and agentcheck.sarif)"
+          exit "$TEXT_EXIT"
+        fi
+        exit 0

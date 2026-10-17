@@ -1,0 +1,46 @@
+{
+  "name": "@dhanushnehru/agentcheck",
+  "version": "0.1.0",
+  "description": "Scan AI coding-agent config files (CLAUDE.md, AGENTS.md, .cursor/rules, MCP configs) for hidden prompt-injection attacks.",
+  "main": "src/scan.js",
+  "bin": {
+    "agentcheck": "./bin/agentcheck.js"
+  },
+  "type": "module",
+  "scripts": {
+    "start": "node bin/agentcheck.js",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "security",
+    "prompt-injection",
+    "ai-agents",
+    "cursor",
+    "claude",
+    "copilot",
+    "mcp",
+    "llm-security",
+    "cli",
+    "sarif"
+  ],
+  "author": "Dhanush Nehru <hello@dhanushnehru.com> (https://github.com/DhanushNehru)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DhanushNehru/agentcheck.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DhanushNehru/agentcheck/issues"
+  },
+  "homepage": "https://github.com/DhanushNehru/agentcheck#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "action.yml",
+    "LICENSE",
+    "README.md"
+  ]
+}
