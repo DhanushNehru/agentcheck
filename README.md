@@ -20,17 +20,23 @@ That gap is being exploited. Researchers at [Pillar Security](https://www.pillar
 
 `agentcheck` scans these files for the documented attack patterns and flags them **before your agent acts on them**.
 
+https://github.com/user-attachments/assets/5a9024c9-21ce-4a84-b008-dade611622b5
+
 ## ⚡ Quick Start
+
+```bash
+npx @dhanushnehru/agentcheck /path/to/your/repo
+```
+
+That's it - no install step, zero dependencies, Node 18+. It prints findings and exits `1` when anything at or above `--fail-on` is found.
+
+Run from source instead:
 
 ```bash
 git clone https://github.com/DhanushNehru/agentcheck.git
 cd agentcheck
 node bin/agentcheck.js /path/to/your/repo
 ```
-
-Zero dependencies. No install step beyond the clone. Node 18+.
-
-(An npm package for `npx @dhanushnehru/agentcheck` is planned; the GitHub Action below needs no npm at all.)
 
 ## 📂 What It Scans
 
