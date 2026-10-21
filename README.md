@@ -90,6 +90,29 @@ Optionally upload results to GitHub code scanning:
     sarif_file: agentcheck.sarif
 ```
 
+### Scan only what a PR changed
+
+`--diff <ref>` restricts the scan to agent config files changed relative to a git ref or range. It accepts anything `git diff` does, including `origin/main...HEAD`:
+
+```bash
+npx @dhanushnehru/agentcheck --diff origin/main...HEAD
+```
+
+Only files that are both changed **and** recognised agent config files are scanned. Deleted files are skipped. If none changed, it exits `0` with a "nothing to scan" message. A bad ref, or running outside a git repository, exits `2`.
+
+In a pull request workflow, check out the full history so the base ref exists, and pass the range through the action's `diff` input:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- uses: DhanushNehru/agentcheck@main
+  with:
+    diff: origin/${{ github.base_ref }}...HEAD
+```
+
+Keep a scheduled job without `diff` for a periodic full scan.
+
 ## 📋 Example Output
 
 Real output from scanning a repo seeded with the attack patterns from the research above (fixtures live in `test/fixtures/malicious/`):

@@ -24,7 +24,7 @@ export function toJson(result) {
   };
 }
 
-export function toText(result) {
+export function toText(result, { diffRef } = {}) {
   const lines = [];
   const all = result.files.flatMap((f) => f.findings.map((x) => ({ file: f.file, ...x })));
   const box = (s) => `│ ${s}`;
@@ -34,6 +34,10 @@ export function toText(result) {
   lines.push('└────────────────────────────────────────────────────┘');
   lines.push('');
 
+  if (result.filesScanned === 0 && diffRef) {
+    lines.push(`No AI agent config files changed relative to ${diffRef}; nothing to scan.`);
+    return lines.join('\n');
+  }
   if (result.filesScanned === 0) {
     lines.push('No AI agent config files found (looked for CLAUDE.md, AGENTS.md,');
     lines.push('.cursor/rules, .windsurf/rules, copilot-instructions.md, MCP configs, ...).');
