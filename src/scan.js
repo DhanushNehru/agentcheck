@@ -2,9 +2,10 @@ import path from 'node:path';
 import { findTargets, readTarget, isJsonTarget } from './targets.js';
 import { scanText } from './rules.js';
 
-export function scanRepo(root) {
+// `only` (optional Set of root-relative paths) restricts the scan to those targets.
+export function scanRepo(root, { only } = {}) {
   const absRoot = path.resolve(root);
-  const targets = findTargets(absRoot);
+  const targets = findTargets(absRoot).filter((rel) => !only || only.has(rel));
   const files = [];
   for (const rel of targets) {
     const text = readTarget(absRoot, rel);

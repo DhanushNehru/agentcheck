@@ -16,6 +16,11 @@ inputs:
     required: false
     default: 'high'
 
+  diff:
+    description: 'Only scan files changed relative to this git ref or range (e.g. origin/main...HEAD). Needs full history: use fetch-depth 0 on checkout.'
+    required: false
+    default: ''
+
 outputs:
   exit-code:
     description: 'Exit code from agentcheck (0 = no findings at or above fail-on, 1 = findings)'
@@ -30,12 +35,15 @@ runs:
       env:
         INPUT_DIRECTORY: ${{ inputs.directory }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_DIFF: ${{ inputs.diff }}
       run: |
         set +e
-        node "${{ github.action_path }}/bin/agentcheck.js" "$INPUT_DIRECTORY" \
+        DIFF_ARGS=()
+        if [ -n "$INPUT_DIFF" ]; then DIFF_ARGS=(--diff "$INPUT_DIFF"); fi
+        node "${{ github.action_path }}/bin/agentcheck.js" "$INPUT_DIRECTORY" "${DIFF_ARGS[@]}" \
           --format sarif --output agentcheck.sarif --fail-on "$INPUT_FAIL_ON"
         SARIF_EXIT=$?
-        node "${{ github.action_path }}/bin/agentcheck.js" "$INPUT_DIRECTORY" --fail-on "$INPUT_FAIL_ON"
+        node "${{ github.action_path }}/bin/agentcheck.js" "$INPUT_DIRECTORY" "${DIFF_ARGS[@]}" --fail-on "$INPUT_FAIL_ON"
         TEXT_EXIT=$?
         echo "exit-code=$TEXT_EXIT" >> "$GITHUB_OUTPUT"
         echo "sarif-file=agentcheck.sarif" >> "$GITHUB_OUTPUT"
