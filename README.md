@@ -113,6 +113,27 @@ In a pull request workflow, check out the full history so the base ref exists, a
 
 Keep a scheduled job without `diff` for a periodic full scan.
 
+### Scan only staged files (pre-commit hook)
+
+`--staged` scans only the agent config files staged for your next commit, so a hook stays fast and is not blocked by findings in files you did not touch:
+
+```bash
+npx @dhanushnehru/agentcheck --staged
+```
+
+It exits `1` when a staged file has a finding at or above `--fail-on`, `0` when nothing relevant is staged, and `2` outside a git repository. It cannot be combined with `--diff`.
+
+To run it before every commit, save this as `.git/hooks/pre-commit` and make it executable (`chmod +x .git/hooks/pre-commit`):
+
+```sh
+#!/bin/sh
+npx --yes @dhanushnehru/agentcheck --staged
+```
+
+With [Husky](https://typicode.github.io/husky/), put the same `npx` line in `.husky/pre-commit`.
+
+`--staged` picks the files from the index but scans each file's **working-tree content** (what is on disk). If you edit a file again after `git add`, the unstaged edit is what gets scanned, not the exact staged version.
+
 ## 📋 Example Output
 
 Real output from scanning a repo seeded with the attack patterns from the research above (fixtures live in `test/fixtures/malicious/`):

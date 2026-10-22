@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { scanRepo } from '../src/scan.js';
 import { toText, toJson, toSarif, failsThreshold } from '../src/report.js';
 import { SEVERITY_ORDER } from '../src/rules.js';
-import { changedSince, GitError } from '../src/git.js';
+import { changedSince, stagedFiles, GitError } from '../src/git.js';
 
 const USAGE = `agentcheck - prompt-injection scanner for AI agent config files
 
@@ -21,6 +21,8 @@ Options:
                        Exit 1 when any finding is at least this severe
   --diff <ref>         Scan only files changed relative to a git ref or range,
                        e.g. origin/main or origin/main...HEAD (for PR scans in CI)
+  --staged             Scan only files staged for the next commit (for pre-commit
+                       hooks). Scans their working-tree content. Not with --diff
   --version           Print version
   --help               Show this help
 
@@ -31,7 +33,7 @@ What it scans: CLAUDE.md, AGENTS.md, GEMINI.md, .cursor/rules, .cursorrules,
 `;
 
 function parseArgs(argv) {
-  const opts = { path: '.', format: 'text', output: null, failOn: 'high', diff: null };
+  const opts = { path: '.', format: 'text', output: null, failOn: 'high', diff: null, staged: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') return { help: true };
@@ -44,6 +46,7 @@ function parseArgs(argv) {
     else if (a.startsWith('--fail-on=')) opts.failOn = a.slice(10);
     else if (a === '--diff') opts.diff = argv[++i];
     else if (a.startsWith('--diff=')) opts.diff = a.slice(7);
+    else if (a === '--staged') opts.staged = true;
     else if (a === '--sarif') opts.format = 'sarif';
     else if (a === '--json') opts.format = 'json';
     else if (!a.startsWith('-')) opts.path = a;
@@ -68,10 +71,14 @@ async function main() {
     console.error(`Path not found: ${args.path}`); process.exit(2);
   }
 
+  if (args.staged && args.diff !== null) {
+    console.error('Use either --staged or --diff, not both'); process.exit(2);
+  }
+
   let only;
-  if (args.diff !== null) {
+  if (args.staged || args.diff !== null) {
     try {
-      only = changedSince(args.path, args.diff);
+      only = args.staged ? stagedFiles(args.path) : changedSince(args.path, args.diff);
     } catch (err) {
       if (!(err instanceof GitError)) throw err;
       console.error(err.message); process.exit(2);
@@ -82,7 +89,7 @@ async function main() {
   let report;
   if (args.format === 'json') report = JSON.stringify(toJson(result), null, 2);
   else if (args.format === 'sarif') report = JSON.stringify(toSarif(result, pkg.version), null, 2);
-  else report = toText(result, { diffRef: args.diff });
+  else report = toText(result, { diffRef: args.diff, staged: args.staged });
 
   if (args.output) {
     fs.writeFileSync(args.output, report + '\n');

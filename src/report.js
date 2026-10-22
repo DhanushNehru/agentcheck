@@ -24,7 +24,7 @@ export function toJson(result) {
   };
 }
 
-export function toText(result, { diffRef } = {}) {
+export function toText(result, { diffRef, staged } = {}) {
   const lines = [];
   const all = result.files.flatMap((f) => f.findings.map((x) => ({ file: f.file, ...x })));
   const box = (s) => `│ ${s}`;
@@ -34,6 +34,10 @@ export function toText(result, { diffRef } = {}) {
   lines.push('└────────────────────────────────────────────────────┘');
   lines.push('');
 
+  if (result.filesScanned === 0 && staged) {
+    lines.push('No staged AI agent config files; nothing to scan.');
+    return lines.join('\n');
+  }
   if (result.filesScanned === 0 && diffRef) {
     lines.push(`No AI agent config files changed relative to ${diffRef}; nothing to scan.`);
     return lines.join('\n');
