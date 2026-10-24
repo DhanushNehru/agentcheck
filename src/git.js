@@ -27,6 +27,11 @@ export function changedFiles(dir, diffArgs = []) {
   return new Set(out.split('\0').filter(Boolean));
 }
 
+// Files staged for the next commit (`git diff --cached`).
+export function stagedFiles(dir) {
+  return changedFiles(dir, ['--cached']);
+}
+
 // Files changed relative to a ref or range, e.g. "origin/main" or "origin/main...HEAD".
 export function changedSince(dir, ref) {
   if (!ref || ref.startsWith('-')) throw new GitError(`--diff needs a git ref or range, got: ${ref ?? '(nothing)'}`);
