@@ -1,6 +1,6 @@
 {
   "name": "@dhanushnehru/agentcheck",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Scan AI coding-agent config files (CLAUDE.md, AGENTS.md, .cursor/rules, MCP configs) for hidden prompt-injection attacks.",
   "main": "src/scan.js",
   "bin": {
@@ -9,7 +9,8 @@
   "type": "module",
   "scripts": {
     "start": "node bin/agentcheck.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "security",
@@ -41,6 +42,7 @@
     "src/",
     "action.yml",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ]
 }
