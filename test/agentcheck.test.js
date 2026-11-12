@@ -129,3 +129,13 @@ test('placeholder tokens and security guidance produce no findings', () => {
   const f = scanText(ben('secret-placeholders.md'));
   assert.deepEqual(f, []);
 });
+
+test('AWS documentation example key IDs are treated as placeholders', () => {
+  const f = scanText('aws docs use AKIAIOSFODNN7EXAMPLE in examples');
+  assert.equal(f.filter((x) => x.ruleId === 'hardcoded-secret').length, 0);
+});
+
+test('real-shaped AWS access key IDs are flagged', () => {
+  const f = scanText('key id AKIAIOSFODNN7XAMPLE1');
+  assert.equal(f.filter((x) => x.ruleId === 'hardcoded-secret').length, 1);
+});
