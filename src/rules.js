@@ -285,12 +285,52 @@ function mcpConfigFindings(text, parsed) {
   return out;
 }
 
+
+// --- Hardcoded credentials in instruction files -------------------------------
+// People paste live API keys into CLAUDE.md / AGENTS.md while setting an agent
+// up, and the files get committed. Distinct from mcp-plaintext-secret, which
+// only inspects MCP server `env` blocks in JSON configs.
+const SECRET_SHAPES = [
+  { re: /sk-ant-[A-Za-z0-9_-]{20,}/g, kind: 'Anthropic API key' },
+  { re: /sk-proj-[A-Za-z0-9_-]{20,}/g, kind: 'OpenAI API key' },
+  { re: /\bsk-[A-Za-z0-9]{20,}\b/g, kind: 'OpenAI-style API key' },
+  { re: /\bghp_[A-Za-z0-9]{30,}/g, kind: 'GitHub personal access token' },
+  { re: /\bgithub_pat_[A-Za-z0-9_]{30,}/g, kind: 'GitHub fine-grained token' },
+  { re: /\bAKIA[0-9A-Z]{16}\b/g, kind: 'AWS access key ID' },
+  { re: /\bAIza[0-9A-Za-z_-]{30,}/g, kind: 'Google API key' },
+  { re: /\bxox[baprs]-[A-Za-z0-9-]{10,}/g, kind: 'Slack token' },
+  { re: /\bhf_[A-Za-z0-9]{25,}/g, kind: 'Hugging Face token' },
+  { re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY(?: BLOCK)?-----/g, kind: 'private key material' },
+];
+
+// Obvious documentation placeholders are not findings.
+function isPlaceholderToken(token) {
+  if (/PRIVATE KEY/.test(token)) return false;
+  const body = token.replace(/^[A-Za-z0-9]+[-_]/, ''); // strip the type prefix
+  if (/^(.)\1{5,}$/.test(body)) return true; // xxxxxxxx / 00000000
+  return /^(your|example|placeholder|dummy|sample|fake|test|insert|replace|change)/i.test(body);
+}
+
+function hardcodedSecrets(text) {
+  const out = [];
+  for (const { re, kind } of SECRET_SHAPES) {
+    let m;
+    while ((m = re.exec(text))) {
+      if (isPlaceholderToken(m[0])) continue;
+      const redacted = m[0].length > 8 ? `${m[0].slice(0, 4)}… (${m[0].length} chars)` : m[0];
+      out.push(finding('hardcoded-secret', 'critical', text, m.index,
+        `${kind} committed in plaintext: "${redacted}". Agent config files get committed and shared; rotate this credential and use an environment-variable reference instead.`));
+    }
+  }
+  return out;
+}
+
 // --- registry ----------------------------------------------------------------
 
 const TEXT_RULES = [
   unicodeTags, invisibleChars, bidiOverrides, injectionPhrases,
   hiddenCommentInstructions, exfiltration, dangerousCommands,
-  sensitiveFileAccess, base64Payload, homoglyphMix,
+  sensitiveFileAccess, base64Payload, homoglyphMix, hardcodedSecrets,
 ];
 
 export const RULE_METADATA = {
@@ -304,6 +344,7 @@ export const RULE_METADATA = {
   'sensitive-file-exfil': { name: 'Sensitive file read + send', severity: 'critical' },
   'base64-payload': { name: 'Embedded base64 payload', severity: 'medium' },
   'homoglyph-mix': { name: 'Homoglyph character mix', severity: 'medium' },
+  'hardcoded-secret': { name: 'Hardcoded credential in an agent config file', severity: 'critical' },
   'mcp-plaintext-secret': { name: 'Plaintext secret in MCP config', severity: 'high' },
   'mcp-remote-code': { name: 'MCP server runs remote code', severity: 'high' },
   'mcp-auto-approve': { name: 'MCP tools auto-approved', severity: 'medium' },
