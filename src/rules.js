@@ -308,6 +308,7 @@ function isPlaceholderToken(token) {
   if (/PRIVATE KEY/.test(token)) return false;
   const body = token.replace(/^[A-Za-z0-9]+[-_]/, ''); // strip the type prefix
   if (/^(.)\1{5,}$/.test(body)) return true; // xxxxxxxx / 00000000
+  if (/example$/i.test(body)) return true; // vendor docs examples, e.g. AWS's AKIA...EXAMPLE
   return /^(your|example|placeholder|dummy|sample|fake|test|insert|replace|change)/i.test(body);
 }
 
