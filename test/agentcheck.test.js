@@ -113,3 +113,19 @@ test('toJson shape', () => {
   assert.equal(j.tool, 'agentcheck');
   assert.ok(Array.isArray(j.findings));
 });
+
+test('detects hardcoded credentials in instruction files', () => {
+  const f = scanText(mal('hardcoded-secrets.md'));
+  const hits = f.filter((x) => x.ruleId === 'hardcoded-secret');
+  assert.equal(hits.length, 3);
+  assert.ok(hits.every((h) => h.severity === 'critical'));
+  assert.match(hits[0].message, /Anthropic API key/);
+  // findings must redact the credential, not echo it
+  assert.ok(!hits[0].message.includes('sk-ant-api03-k9Xv2mPqR7sT4wY8zB1nL5dF'));
+  assert.match(hits[0].message, /sk-a…/);
+});
+
+test('placeholder tokens and security guidance produce no findings', () => {
+  const f = scanText(ben('secret-placeholders.md'));
+  assert.deepEqual(f, []);
+});
