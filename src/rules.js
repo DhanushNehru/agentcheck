@@ -11,9 +11,47 @@ function lineCol(text, index) {
   return { line, col };
 }
 
+// Credential shapes used both for detection (hardcoded-secret) and for
+// redacting quoted content in every rule's message, so no finding ever
+// echoes a live-looking secret into a report.
+const SECRET_SHAPES = [
+  { re: /sk-ant-[A-Za-z0-9_-]{20,}/g, kind: 'Anthropic API key' },
+  { re: /sk-proj-[A-Za-z0-9_-]{20,}/g, kind: 'OpenAI API key' },
+  { re: /\bsk-[A-Za-z0-9]{20,}\b/g, kind: 'OpenAI-style API key' },
+  { re: /\bghp_[A-Za-z0-9]{30,}/g, kind: 'GitHub personal access token' },
+  { re: /\bgithub_pat_[A-Za-z0-9_]{30,}/g, kind: 'GitHub fine-grained token' },
+  { re: /\bAKIA[0-9A-Z]{16}\b/g, kind: 'AWS access key ID' },
+  { re: /\bAIza[0-9A-Za-z_-]{30,}/g, kind: 'Google API key' },
+  { re: /\bxox[baprs]-[A-Za-z0-9-]{10,}/g, kind: 'Slack token' },
+  { re: /\bhf_[A-Za-z0-9]{25,}/g, kind: 'Hugging Face token' },
+];
+
+// Obvious documentation placeholders are neither findings nor redacted.
+function isPlaceholderToken(token) {
+  const body = token.replace(/^[A-Za-z0-9]+[-_]/, ''); // strip the type prefix
+  if (/^(.)\1{5,}$/.test(body)) return true; // xxxxxxxx / 00000000
+  if (/example$/i.test(body)) return true; // vendor docs examples, e.g. AWS's AKIA...EXAMPLE
+  return /^(your|example|placeholder|dummy|sample|fake|test|insert|replace|change)/i.test(body);
+}
+
+function redactToken(token) {
+  return token.length > 8 ? `${token.slice(0, 4)}… (${token.length} chars)` : '(redacted)';
+}
+
+export function redactSecrets(text) {
+  let out = String(text);
+  for (const { re } of SECRET_SHAPES) {
+    // Fresh regex per call: finding() runs redactSecrets while hardcodedSecrets
+    // is mid-iteration over these same /g objects; reusing them would reset
+    // lastIndex and loop forever.
+    out = out.replace(new RegExp(re.source, re.flags), (m) => (isPlaceholderToken(m) ? m : redactToken(m)));
+  }
+  return out;
+}
+
 function finding(ruleId, severity, text, index, message) {
   const { line, col } = lineCol(text, index);
-  return { ruleId, severity, line, col, message };
+  return { ruleId, severity, line, col, message: redactSecrets(message) };
 }
 
 // Unicode "Tags" block: U+E0000..U+E007F map 1:1 to ASCII and render
@@ -285,12 +323,38 @@ function mcpConfigFindings(text, parsed) {
   return out;
 }
 
+
+// --- Hardcoded credentials in instruction files -------------------------------
+// People paste live API keys into CLAUDE.md / AGENTS.md while setting an agent
+// up, and the files get committed. Distinct from mcp-plaintext-secret, which
+// only inspects MCP server `env` blocks in JSON configs. The token shapes and
+// placeholder rules live above, shared with the report redaction path.
+const PRIVATE_KEY_RE = /-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY(?: BLOCK)?-----/g;
+
+function hardcodedSecrets(text) {
+  const out = [];
+  for (const { re, kind } of SECRET_SHAPES) {
+    let m;
+    while ((m = re.exec(text))) {
+      if (isPlaceholderToken(m[0])) continue;
+      out.push(finding('hardcoded-secret', 'critical', text, m.index,
+        `${kind} committed in plaintext: "${redactToken(m[0])}". Agent config files get committed and shared; rotate this credential and use an environment-variable reference instead.`));
+    }
+  }
+  let m;
+  while ((m = PRIVATE_KEY_RE.exec(text))) {
+    out.push(finding('hardcoded-secret', 'critical', text, m.index,
+      'Private key material committed in plaintext. Agent config files get committed and shared; remove the key and reference it from a secret store instead.'));
+  }
+  return out;
+}
+
 // --- registry ----------------------------------------------------------------
 
 const TEXT_RULES = [
   unicodeTags, invisibleChars, bidiOverrides, injectionPhrases,
   hiddenCommentInstructions, exfiltration, dangerousCommands,
-  sensitiveFileAccess, base64Payload, homoglyphMix,
+  sensitiveFileAccess, base64Payload, homoglyphMix, hardcodedSecrets,
 ];
 
 export const RULE_METADATA = {
@@ -304,6 +368,7 @@ export const RULE_METADATA = {
   'sensitive-file-exfil': { name: 'Sensitive file read + send', severity: 'critical' },
   'base64-payload': { name: 'Embedded base64 payload', severity: 'medium' },
   'homoglyph-mix': { name: 'Homoglyph character mix', severity: 'medium' },
+  'hardcoded-secret': { name: 'Hardcoded credential in an agent config file', severity: 'critical' },
   'mcp-plaintext-secret': { name: 'Plaintext secret in MCP config', severity: 'high' },
   'mcp-remote-code': { name: 'MCP server runs remote code', severity: 'high' },
   'mcp-auto-approve': { name: 'MCP tools auto-approved', severity: 'medium' },
