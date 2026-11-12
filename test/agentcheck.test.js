@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanText, SEVERITY_ORDER } from '../src/rules.js';
 import { scanRepo } from '../src/scan.js';
-import { toSarif, toJson, failsThreshold } from '../src/report.js';
+import { toSarif, toJson, toText, failsThreshold } from '../src/report.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const mal = (n) => fs.readFileSync(path.join(here, 'fixtures/malicious', n), 'utf8');
@@ -138,4 +138,22 @@ test('AWS documentation example key IDs are treated as placeholders', () => {
 test('real-shaped AWS access key IDs are flagged', () => {
   const f = scanText('key id AKIAIOSFODNN7XAMPLE1');
   assert.equal(f.filter((x) => x.ruleId === 'hardcoded-secret').length, 1);
+});
+
+test('quoted line content is redacted in every report format', () => {
+  const token = 'ghp_aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW';
+  const f = scanText(mal('secret-in-quoted-line.md'));
+  assert.ok(f.some((x) => x.ruleId === 'exfiltration-endpoint'), 'expected the exfil rule to fire');
+  assert.ok(f.some((x) => x.ruleId === 'hardcoded-secret'), 'expected the secret rule to fire');
+  for (const x of f) assert.ok(!x.message.includes(token), `raw token leaked in ${x.ruleId} message`);
+
+  const tmp = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'agentcheck-redact-'));
+  fs.writeFileSync(path.join(tmp, 'CLAUDE.md'), mal('secret-in-quoted-line.md'));
+  const r = scanRepo(tmp);
+  const text = toText(r);
+  const json = JSON.stringify(toJson(r));
+  const sarif = JSON.stringify(toSarif(r, '0.2.0'));
+  for (const [name, out] of [['text', text], ['json', json], ['sarif', sarif]]) {
+    assert.ok(!out.includes(token), `raw token leaked in ${name} report`);
+  }
 });
