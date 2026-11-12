@@ -4,7 +4,8 @@
 
 ### Added
 
-- `hardcoded-secret` rule: live-looking API keys, tokens and private key material pasted into any agent config file are flagged as critical and redacted in reports. Placeholder examples (`ghp_xxxx…`, `your-key-here`) are ignored.
+- `hardcoded-secret` rule: live-looking API keys, tokens and private key material pasted into any agent config file are flagged as critical and redacted in reports. Placeholder examples (`ghp_xxxx…`, `your-key-here`, vendor docs keys like AWS's `AKIA...EXAMPLE`) are ignored.
+- All finding messages now redact credential-shaped strings, so a secret on a line quoted by another rule (e.g. `exfiltration-endpoint`) never reaches text, JSON or SARIF output.
 
 ## 0.2.0 (unreleased)
 
