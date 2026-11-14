@@ -56,6 +56,7 @@ node bin/agentcheck.js /path/to/your/repo
 |------|----------|-----------------|
 | `unicode-tag-chars` | 🔴 critical | Invisible Unicode Tag characters (U+E0000 block) smuggling hidden ASCII text — decoded and shown |
 | `sensitive-file-exfil` | 🔴 critical | Instructions to read `.env`, SSH keys, AWS credentials etc. **and** send/include their contents |
+| `hardcoded-secret` | 🔴 critical | Live-looking API keys, tokens or private keys pasted into any config file (redacted in the report) |
 | `exfiltration-endpoint` | 🔴/🟠 | webhook.site / requestbin / ngrok-style capture endpoints, or network tools combined with secret references |
 | `invisible-characters` | 🟠 high | Zero-width spaces/joiners, soft hyphens and other invisible characters used to break keywords or hide text |
 | `bidi-override` | 🟠 high | Bidirectional text controls that make text render differently than stored (Trojan Source class) |

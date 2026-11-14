@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanText, SEVERITY_ORDER } from '../src/rules.js';
 import { scanRepo } from '../src/scan.js';
-import { toSarif, toJson, failsThreshold } from '../src/report.js';
+import { toSarif, toJson, toText, failsThreshold } from '../src/report.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const mal = (n) => fs.readFileSync(path.join(here, 'fixtures/malicious', n), 'utf8');
@@ -112,4 +112,48 @@ test('toJson shape', () => {
   const j = toJson(r);
   assert.equal(j.tool, 'agentcheck');
   assert.ok(Array.isArray(j.findings));
+});
+
+test('detects hardcoded credentials in instruction files', () => {
+  const f = scanText(mal('hardcoded-secrets.md'));
+  const hits = f.filter((x) => x.ruleId === 'hardcoded-secret');
+  assert.equal(hits.length, 3);
+  assert.ok(hits.every((h) => h.severity === 'critical'));
+  assert.match(hits[0].message, /Anthropic API key/);
+  // findings must redact the credential, not echo it
+  assert.ok(!hits[0].message.includes('sk-ant-api03-k9Xv2mPqR7sT4wY8zB1nL5dF'));
+  assert.match(hits[0].message, /sk-a…/);
+});
+
+test('placeholder tokens and security guidance produce no findings', () => {
+  const f = scanText(ben('secret-placeholders.md'));
+  assert.deepEqual(f, []);
+});
+
+test('AWS documentation example key IDs are treated as placeholders', () => {
+  const f = scanText('aws docs use AKIAIOSFODNN7EXAMPLE in examples');
+  assert.equal(f.filter((x) => x.ruleId === 'hardcoded-secret').length, 0);
+});
+
+test('real-shaped AWS access key IDs are flagged', () => {
+  const f = scanText('key id AKIAIOSFODNN7XAMPLE1');
+  assert.equal(f.filter((x) => x.ruleId === 'hardcoded-secret').length, 1);
+});
+
+test('quoted line content is redacted in every report format', () => {
+  const token = 'ghp_aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW';
+  const f = scanText(mal('secret-in-quoted-line.md'));
+  assert.ok(f.some((x) => x.ruleId === 'exfiltration-endpoint'), 'expected the exfil rule to fire');
+  assert.ok(f.some((x) => x.ruleId === 'hardcoded-secret'), 'expected the secret rule to fire');
+  for (const x of f) assert.ok(!x.message.includes(token), `raw token leaked in ${x.ruleId} message`);
+
+  const tmp = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'agentcheck-redact-'));
+  fs.writeFileSync(path.join(tmp, 'CLAUDE.md'), mal('secret-in-quoted-line.md'));
+  const r = scanRepo(tmp);
+  const text = toText(r);
+  const json = JSON.stringify(toJson(r));
+  const sarif = JSON.stringify(toSarif(r, '0.2.0'));
+  for (const [name, out] of [['text', text], ['json', json], ['sarif', sarif]]) {
+    assert.ok(!out.includes(token), `raw token leaked in ${name} report`);
+  }
 });
