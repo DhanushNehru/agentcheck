@@ -1,6 +1,6 @@
 {
   "name": "@dhanushnehru/agentcheck",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Scan AI coding-agent config files (CLAUDE.md, AGENTS.md, .cursor/rules, MCP configs) for hidden prompt-injection attacks.",
   "main": "src/scan.js",
   "bin": {
