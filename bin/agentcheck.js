@@ -2,7 +2,7 @@
 // agentcheck - scan AI coding-agent config files for hidden prompt injection.
 import fs from 'node:fs';
 import { scanRepo } from '../src/scan.js';
-import { toText, toJson, toSarif, failsThreshold } from '../src/report.js';
+import { toText, toJson, toSarif, toMarkdown, failsThreshold } from '../src/report.js';
 import { SEVERITY_ORDER } from '../src/rules.js';
 import { changedSince, stagedFiles, GitError } from '../src/git.js';
 
@@ -99,6 +99,9 @@ async function main() {
   }
 
   const all = result.files.flatMap((f) => f.findings);
+  const stepSummary = process.env.GITHUB_STEP_SUMMARY;
+  if (stepSummary) fs.appendFileSync(stepSummary, `${toMarkdown(result)}
+`);
   process.exit(failsThreshold(all, args.failOn) ? 1 : 0);
 }
 

@@ -91,6 +91,8 @@ Optionally upload results to GitHub code scanning:
     sarif_file: agentcheck.sarif
 ```
 
+The action appends a Markdown summary to `$GITHUB_STEP_SUMMARY` with files scanned, findings by severity, and the top findings by file and line. Paths and messages are escaped, and secrets stay redacted.
+
 ### Scan only what a PR changed
 
 `--diff <ref>` restricts the scan to agent config files changed relative to a git ref or range. It accepts anything `git diff` does, including `origin/main...HEAD`:
