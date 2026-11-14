@@ -60,7 +60,7 @@ export function findTargets(root) {
         walk(abs);
       } else if (e.isFile()) {
         const rel = path.relative(root, abs).split(path.sep).join('/');
-        if (BASENAMES.has(e.name)) add(abs);
+        if (BASENAMES.has(e.name) || isJsonTarget(rel)) add(abs);
         else if (RULE_DIRS.some((d) => rel.startsWith(d + '/'))) add(abs);
       }
     }
