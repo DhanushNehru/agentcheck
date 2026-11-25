@@ -54,7 +54,7 @@ test('detects bidi override characters', () => {
 });
 
 test('MCP config: flags plaintext secrets, auto-approve, remote server', () => {
-  const f = scanText(mal('mcp-secret.json'), { isJsonConfig: true });
+  const f = scanText(mal('mcp-secret.json.fixture'), { isJsonConfig: true });
   const got = ids(f);
   assert.ok(got.includes('mcp-plaintext-secret'));
   assert.ok(got.includes('mcp-auto-approve'));
@@ -67,7 +67,7 @@ test('benign style rules produce no findings', () => {
 });
 
 test('benign MCP config with placeholder secret produces no findings', () => {
-  const f = scanText(ben('mcp-safe.json'), { isJsonConfig: true });
+  const f = scanText(ben('mcp-safe.json.fixture'), { isJsonConfig: true });
   assert.deepEqual(f, []);
 });
 
@@ -81,7 +81,7 @@ test('scanRepo finds fixtures and reports per-file', () => {
   fs.mkdirSync(path.join(tmp, '.cursor/rules'), { recursive: true });
   fs.writeFileSync(path.join(tmp, 'CLAUDE.md'), mal('override-phrase.md'));
   fs.writeFileSync(path.join(tmp, '.cursor/rules/style.md'), ben('style-rules.md'));
-  fs.writeFileSync(path.join(tmp, '.mcp.json'), mal('mcp-secret.json'));
+  fs.writeFileSync(path.join(tmp, '.mcp.json'), mal('mcp-secret.json.fixture'));
   const r = scanRepo(tmp);
   assert.equal(r.filesScanned, 3);
   const all = r.files.flatMap((f) => f.findings);
@@ -89,7 +89,7 @@ test('scanRepo finds fixtures and reports per-file', () => {
 });
 
 test('SARIF output is structurally valid', () => {
-  const r = scanRepo(here); // scans the repo; only fixtures match target names
+  const r = scanRepo(here); // fixture filenames are not repository config targets
   const sarif = toSarif(r, '0.1.0');
   assert.equal(sarif.version, '2.1.0');
   assert.ok(sarif.runs[0].tool.driver.name === 'agentcheck');

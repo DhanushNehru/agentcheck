@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Discover root and nested `mcp*.json` files using the same matching rules as JSON config scanning (#18).
+
 ## 0.3.0
 
 ### Added
