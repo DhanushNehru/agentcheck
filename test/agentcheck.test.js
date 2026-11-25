@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanText, SEVERITY_ORDER } from '../src/rules.js';
 import { scanRepo } from '../src/scan.js';
-import { toSarif, toJson, toText, failsThreshold } from '../src/report.js';
+import { toSarif, toJson, toText, toMarkdown, escapeMarkdownCell, failsThreshold } from '../src/report.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const mal = (n) => fs.readFileSync(path.join(here, 'fixtures/malicious', n), 'utf8');
@@ -156,4 +156,16 @@ test('quoted line content is redacted in every report format', () => {
   for (const [name, out] of [['text', text], ['json', json], ['sarif', sarif]]) {
     assert.ok(!out.includes(token), `raw token leaked in ${name} report`);
   }
+});
+
+test('markdown summary escapes metacharacters and redacts secrets', () => {
+  const token = 'ghp_aB...U1vW';
+  const tmp = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'agentcheck-md-'));
+  fs.writeFileSync(path.join(tmp, 'CLAUDE.md'), mal('secret-in-quoted-line.md'));
+  const r = scanRepo(tmp);
+  const md = toMarkdown(r);
+  assert.ok(!md.includes(token), 'raw token leaked in markdown report');
+  const escaped = ['|', '`', '[', ']', '<', '>'].map(escapeMarkdownCell);
+  assert.deepEqual(escaped, [String.raw`\|`, String.raw`\``, String.raw`\[`, String.raw`\]`, '&lt;', '&gt;']);
+  assert.match(md, /Files scanned:/);
 });

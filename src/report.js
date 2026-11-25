@@ -24,6 +24,50 @@ export function toJson(result) {
   };
 }
 
+export function escapeMarkdownCell(value) {
+  return String(value ?? '')
+    .replace(/\|/g, '\\|')
+    .replace(/`/g, '\\`')
+    .replace(/\[/g, '\\[')
+    .replace(/\]/g, '\\]')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\r?\n/g, ' ');
+}
+
+export function toMarkdown(result) {
+  const all = result.files.flatMap((f) => f.findings.map((x) => ({ file: f.file, ...x })));
+  const counts = Object.fromEntries(SEVERITY_ORDER.map((severity) => [
+    severity,
+    all.filter((f) => f.severity === severity).length,
+  ]));
+  const top = [...all].sort((a, b) => SEVERITY_ORDER.indexOf(b.severity) - SEVERITY_ORDER.indexOf(a.severity)).slice(0, 20);
+
+  const lines = [
+    '## agentcheck',
+    '',
+    `Files scanned: **${result.filesScanned}**`,
+    '',
+    '| Severity | Count |',
+    '| --- | ---: |',
+    ...SEVERITY_ORDER.map((severity) => `| ${severity} | ${counts[severity]} |`),
+    '',
+  ];
+
+  if (all.length === 0) {
+    lines.push('No findings.');
+    return lines.join('\n');
+  }
+
+  lines.push('### Top findings', '', '| Severity | Location | Rule | Message |', '| --- | --- | --- | --- |');
+  for (const finding of top) {
+    const location = `${finding.file}:${finding.line}:${finding.col}`;
+    lines.push(`| ${escapeMarkdownCell(finding.severity)} | ${escapeMarkdownCell(location)} | ${escapeMarkdownCell(finding.ruleId)} | ${escapeMarkdownCell(finding.message)} |`);
+  }
+  if (all.length > top.length) lines.push('', `Showing ${top.length} of ${all.length} findings.`);
+  return lines.join('\n');
+}
+
 export function toText(result, { diffRef, staged } = {}) {
   const lines = [];
   const all = result.files.flatMap((f) => f.findings.map((x) => ({ file: f.file, ...x })));
